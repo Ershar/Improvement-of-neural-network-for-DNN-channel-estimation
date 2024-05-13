@@ -1,0 +1,70 @@
+%attention
+
+# 输入层
+input_bits = Input(shape=(payloadBits_per_OFDM * 2,))
+
+# 第一层
+temp = BatchNormalization()(input_bits)
+temp = Dense(n_hidden_1, activation='relu')(temp)
+
+# 第二层
+temp = BatchNormalization()(temp)
+temp = Dense(n_hidden_2, activation='relu')(temp)
+
+# 第三层
+temp = BatchNormalization()(temp)
+temp = Dense(n_hidden_3, activation='relu')(temp)
+
+# 自注意力机制
+attention = Dense(n_hidden_3)(temp)
+attention = Activation('softmax')(attention)
+temp = Add()([temp, attention])
+
+# 输出层
+out_put = Dense(n_output, activation='sigmoid')(temp)
+
+# 构建模型
+model = Model(input_bits, out_put)
+model.compile(optimizer='adam', loss='mse', metrics=[bit_err])
+model.summary()
+
+%attention + dropout
+
+from tensorflow.keras.layers import Input, BatchNormalization, Dense, Conv1D, Activation, Add
+from tensorflow.keras.models import Model
+
+def self_attention(input_layer, n_hidden):
+    query = Dense(n_hidden)(input_layer)
+    key = Dense(n_hidden)(input_layer)
+    value = Dense(n_hidden)(input_layer)
+
+    attention_weights = tf.matmul(query, tf.transpose(key))
+    attention_weights = Activation('softmax')(attention_weights)
+
+    attended_values = tf.matmul(attention_weights, value)
+
+    output = Multiply()([attended_values, input_layer])
+    return output
+
+
+input_bits = Input(shape=(payloadBits_per_OFDM * 2,))
+temp = BatchNormalization()(input_bits)
+temp = Dense(n_hidden_1, activation='relu')(temp)
+temp = BatchNormalization()(temp)
+temp = Dense(n_hidden_2, activation='relu')(temp)
+temp = BatchNormalization()(temp)
+temp = Dense(n_hidden_3, activation='relu')(temp)
+temp = BatchNormalization()(temp)
+
+# Self-Attention Layer
+attention_output = self_attention(temp, n_hidden_3)
+
+# Dropout Layer
+dropout_output = Dropout(0.5)(attention_output)
+
+# Final Dense Layer
+output = Dense(n_output, activation='sigmoid')(dropout_output)
+
+model = Model(input_bits, output)
+model.compile(optimizer='adam', loss='mse', metrics=[bit_err])
+model.summary()
